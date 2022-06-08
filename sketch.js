@@ -230,7 +230,7 @@ class SoftbodyPoint {
 			}
 		});
 		if (!collided) p.pos = new_pos;
-		
+		//p.pos = new_pos;
 	}
 
 	addForce(v){
@@ -357,8 +357,6 @@ class Softbody {
 		// Move and Self-collision
 		this.points.forEach((point, i) => {
 			if (point.v.length() > 0.1) point.pos = point.pos.add(point.v);
-
-			
 		});
 
 		// Collision
@@ -368,6 +366,11 @@ class Softbody {
 			});
 		});
 
+		// this.springs.forEach((spring) => {
+		// 	if (spring.p1.isInRadius(spring.p2)){
+		// 		spring.p1.collide(spring.p2, world_objects);
+		// 	}
+		// });
 		this.points.forEach((point, i) => {
 			this.points.forEach((sub_point, j) => {
 				if (i != j) {
@@ -404,27 +407,33 @@ function assert(condition) {
 }
 
 // Physical Constants
-const GRAVITY_ACCELERATION = 0.02;
-const SPRING_KS = 1.2;
+const GRAVITY_ACCELERATION = 0.015;
+const SPRING_KS = 1;
 const SPRING_KD = 0.00001;
 
-const VELCOITY_LOSS = 0.001;
+const VELCOITY_LOSS = 0.005;
 
 const COLLISION_VELOCITY_LOSS = 0.3;
 const INTERNAL_COLLISION_VELOCITY_LOSS = 0.6;
 
-const MAX_VELOCITY = 4;
+const MAX_VELOCITY = 5;
 const MAX_FORCE = 100;
 
 
 // Softbody
 const SOFTBODY_POINT_DISTANT = 30;
 const SOFTBODY_POINT_RADIUS = SOFTBODY_POINT_DISTANT / 2.5;
-const SOFTBODY_POINT_MASS = 10;
+const SOFTBODY_POINT_MASS = 8;
+
+const SOFTBODY_WIDTH = 10;
+const SOFTBODY_HEIGHT = 10;
+const SOFTBODY_STARTING_POINT = new Vec2(50, 20); // anchor at top left
 
 // Dimensions
-const CANVAS_WIDTH = 800;
-const CANVAS_HEIGHT = 800;
+const CANVAS_WIDTH = 1500;
+const CANVAS_HEIGHT = 1000;
+
+const SIDEBAR_WIDTH = 300;
 
 const OUT_PADDING = 30;
 
@@ -445,7 +454,7 @@ let softbody = null;
 let playing = false;
 
 function setup(){
-	createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT);
+	createCanvas(CANVAS_WIDTH + SIDEBAR_WIDTH, CANVAS_HEIGHT);
 
 	// walls
 	world_objects.push(new Polygon([ //bottom
@@ -471,54 +480,36 @@ function setup(){
 
 	// create softbody
 	softbody = new Softbody();
-	softbody.createSoftbody(new Vec2(50, 20), 5, 5, SOFTBODY_POINT_DISTANT, SOFTBODY_POINT_MASS);
-	// let p1 = new SoftbodyPoint(50, 50, 20, SOFTBODY_POINT_RADIUS);
-	// let p2 = new SoftbodyPoint(70, 50, 20, SOFTBODY_POINT_RADIUS);
-	// let p3 = new SoftbodyPoint(50, 70, 20, SOFTBODY_POINT_RADIUS);
-	// let p4 = new SoftbodyPoint(70, 70, 20, SOFTBODY_POINT_RADIUS);
+	softbody.createSoftbody(SOFTBODY_STARTING_POINT, SOFTBODY_WIDTH, SOFTBODY_HEIGHT, SOFTBODY_POINT_DISTANT, SOFTBODY_POINT_MASS);
 
-	// softbody.points.push(p1);
-	// softbody.points.push(p2);
-	// softbody.points.push(p3);
-	// softbody.points.push(p4);
-
-	// let s12 = new SoftbodySpring(p1, p2, SPRING_KS, SPRING_KD);
-	// let s13 = new SoftbodySpring(p1, p3, SPRING_KS, SPRING_KD);
-	// let s14 = new SoftbodySpring(p1, p4, SPRING_KS, SPRING_KD);
-	// let s23 = new SoftbodySpring(p2, p3, SPRING_KS, SPRING_KD);
-	// let s24 = new SoftbodySpring(p2, p4, SPRING_KS, SPRING_KD);
-	// let s34 = new SoftbodySpring(p3, p4, SPRING_KS, SPRING_KD);
-
-	// softbody.springs.push(s12);
-	// softbody.springs.push(s13);
-	// softbody.springs.push(s14);
-	// softbody.springs.push(s23);
-	// softbody.springs.push(s24);
-	// softbody.springs.push(s34);
-
-	// softbody.points.forEach(element => {
-	// 	console.log(element);
-	// });
 }
 
-//let debug_step_counter = 0;
 function draw(){
 	background(255);
 
-	world_objects.forEach((polygon, i) => polygon.draw());
+	strokeWeight(0);
+	fill(240);
+	rect(CANVAS_WIDTH, 0, SIDEBAR_WIDTH, CANVAS_HEIGHT);
+	
+
+	stroke(WORLD_OBJECT_LINE_COLOR.r, WORLD_OBJECT_LINE_COLOR.g, WORLD_OBJECT_LINE_COLOR.b, WORLD_OBJECT_LINE_COLOR.a);
+	strokeWeight(2);
+	fill(255);
+	rect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+	world_objects.forEach((polygon, i) => {
+		if (i > 3) polygon.draw();
+	});
 
 	softbody.draw();
 
 	if (playing) softbody.step(world_objects);
-
-	//if (debug_step_counter++ % 10 == 0) console.log(softbody.points[0].v);
 }
 
 
 let clicked_points = [];
 function mouseClicked() {
 	console.log(new Vec2(mouseX, mouseY));	
-	console.log(world_objects);	
 	clicked_points.push(new Vec2(mouseX, mouseY));
 }
 
