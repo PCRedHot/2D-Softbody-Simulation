@@ -354,9 +354,9 @@ class Softbody {
 		});
 
 
-		// Move and Self-collision
+		// Move
 		this.points.forEach((point, i) => {
-			if (point.v.length() > 0.1) point.pos = point.pos.add(point.v);
+			if (point.v.length() > 0.01) point.pos = point.pos.add(point.v);
 		});
 
 		// Collision
@@ -366,15 +366,10 @@ class Softbody {
 			});
 		});
 
-		// this.springs.forEach((spring) => {
-		// 	if (spring.p1.isInRadius(spring.p2)){
-		// 		spring.p1.collide(spring.p2, world_objects);
-		// 	}
-		// });
+		// Self-Collision Check
 		this.points.forEach((point, i) => {
 			this.points.forEach((sub_point, j) => {
 				if (i != j) {
-					// Self Collision Check
 					if (sub_point.isInRadius(point)){
 						sub_point.collide(point, world_objects);
 					}
@@ -407,13 +402,13 @@ function assert(condition) {
 }
 
 // Physical Constants
-const GRAVITY_ACCELERATION = 0.015;
+const GRAVITY_ACCELERATION = 0.02;
 const SPRING_KS = 1;
 const SPRING_KD = 0.00001;
 
 const VELCOITY_LOSS = 0.005;
 
-const COLLISION_VELOCITY_LOSS = 0.3;
+const COLLISION_VELOCITY_LOSS = 0.2;
 const INTERNAL_COLLISION_VELOCITY_LOSS = 0.6;
 
 const MAX_VELOCITY = 5;
@@ -421,7 +416,7 @@ const MAX_FORCE = 100;
 
 
 // Softbody
-const SOFTBODY_POINT_DISTANT = 30;
+const SOFTBODY_POINT_DISTANT = 40;
 const SOFTBODY_POINT_RADIUS = SOFTBODY_POINT_DISTANT / 2.5;
 const SOFTBODY_POINT_MASS = 8;
 
@@ -450,8 +445,10 @@ const SOFTBODY_SPRING_WEIGHT = 3;
 let world_objects = [];
 let softbody = null;
 
-// Controls
+// Control State
 let playing = false;
+
+
 
 function setup(){
 	createCanvas(CANVAS_WIDTH + SIDEBAR_WIDTH, CANVAS_HEIGHT);
@@ -509,7 +506,6 @@ function draw(){
 
 let clicked_points = [];
 function mouseClicked() {
-	console.log(new Vec2(mouseX, mouseY));	
 	clicked_points.push(new Vec2(mouseX, mouseY));
 }
 
