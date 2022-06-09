@@ -395,6 +395,26 @@ class Color {
 	}
 }
 
+class ClickEvent {
+
+	constructor(min_x, min_y, max_x, max_y, priority, callback) {
+		this.min_x = min_x;
+		this.min_y = min_y;
+		this.max_x = max_x;
+		this.max_y = max_y;
+		this.priority = priority;
+		this.callback = callback;
+	}
+
+	isOnClick(x, y) {
+		return isInBounding(x, y, this.min_x, this.min_y, this.max_x, this.max_y);
+	}
+
+	onClick() {
+		this.callback();
+	}
+}
+
 function assert(condition) {
     if (!condition) {
         throw "Assertion failed";
@@ -425,10 +445,10 @@ const SOFTBODY_HEIGHT = 10;
 const SOFTBODY_STARTING_POINT = new Vec2(50, 20); // anchor at top left
 
 // Dimensions
-const CANVAS_WIDTH = 1500;
-const CANVAS_HEIGHT = 1000;
+const SIMULATION_WIDTH = 1500;
+const SIMULATION_HEIGHT = 1000;
 
-const SIDEBAR_WIDTH = 300;
+const SIDEBAR_WIDTH = 100;
 
 const OUT_PADDING = 30;
 
@@ -448,32 +468,32 @@ let softbody = null;
 // Control State
 let playing = false;
 
-
+let sidebarClickEventTable = [];	//	[x_min, y_min, x_max, y_max], priority, callback_function
 
 function setup(){
-	createCanvas(CANVAS_WIDTH + SIDEBAR_WIDTH, CANVAS_HEIGHT);
+	createCanvas(SIMULATION_WIDTH + SIDEBAR_WIDTH, SIMULATION_HEIGHT);
 
 	// walls
 	world_objects.push(new Polygon([ //bottom
 		new Vec2(-OUT_PADDING, -OUT_PADDING),
-		new Vec2(CANVAS_WIDTH + OUT_PADDING, -OUT_PADDING),
-		new Vec2(CANVAS_WIDTH + OUT_PADDING, 0),
+		new Vec2(SIMULATION_WIDTH + OUT_PADDING, -OUT_PADDING),
+		new Vec2(SIMULATION_WIDTH + OUT_PADDING, 0),
 		new Vec2(-OUT_PADDING, 0)]));	
 	world_objects.push(new Polygon([ // top
-		new Vec2(-OUT_PADDING, CANVAS_HEIGHT + OUT_PADDING),
-		new Vec2(CANVAS_WIDTH + OUT_PADDING, CANVAS_HEIGHT + OUT_PADDING), 
-		new Vec2(CANVAS_WIDTH + OUT_PADDING, CANVAS_HEIGHT), 
-		new Vec2(-OUT_PADDING, CANVAS_HEIGHT)]));
+		new Vec2(-OUT_PADDING, SIMULATION_HEIGHT + OUT_PADDING),
+		new Vec2(SIMULATION_WIDTH + OUT_PADDING, SIMULATION_HEIGHT + OUT_PADDING), 
+		new Vec2(SIMULATION_WIDTH + OUT_PADDING, SIMULATION_HEIGHT), 
+		new Vec2(-OUT_PADDING, SIMULATION_HEIGHT)]));
 	world_objects.push(new Polygon([ // left
-		new Vec2(-OUT_PADDING, CANVAS_HEIGHT + OUT_PADDING),
+		new Vec2(-OUT_PADDING, SIMULATION_HEIGHT + OUT_PADDING),
 		new Vec2(-OUT_PADDING, -OUT_PADDING), 
 		new Vec2(0, -OUT_PADDING), 
-		new Vec2(0, CANVAS_HEIGHT + OUT_PADDING)]));
+		new Vec2(0, SIMULATION_HEIGHT + OUT_PADDING)]));
 	world_objects.push(new Polygon([ // right
-		new Vec2(CANVAS_WIDTH + OUT_PADDING, -OUT_PADDING),
-		new Vec2(CANVAS_WIDTH + OUT_PADDING, CANVAS_HEIGHT + OUT_PADDING),
-		new Vec2(CANVAS_WIDTH, CANVAS_HEIGHT + OUT_PADDING),
-		new Vec2(CANVAS_WIDTH, -OUT_PADDING)]));
+		new Vec2(SIMULATION_WIDTH + OUT_PADDING, -OUT_PADDING),
+		new Vec2(SIMULATION_WIDTH + OUT_PADDING, SIMULATION_HEIGHT + OUT_PADDING),
+		new Vec2(SIMULATION_WIDTH, SIMULATION_HEIGHT + OUT_PADDING),
+		new Vec2(SIMULATION_WIDTH, -OUT_PADDING)]));
 
 	// create softbody
 	softbody = new Softbody();
@@ -484,15 +504,14 @@ function setup(){
 function draw(){
 	background(255);
 
-	strokeWeight(0);
-	fill(240);
-	rect(CANVAS_WIDTH, 0, SIDEBAR_WIDTH, CANVAS_HEIGHT);
+	// Draw Sidebar UI
+	drawSidebar(new Vec2(SIMULATION_WIDTH, 0));
 	
-
+	// Draw Simulation Box
 	stroke(WORLD_OBJECT_LINE_COLOR.r, WORLD_OBJECT_LINE_COLOR.g, WORLD_OBJECT_LINE_COLOR.b, WORLD_OBJECT_LINE_COLOR.a);
 	strokeWeight(2);
 	fill(255);
-	rect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+	rect(0, 0, SIMULATION_WIDTH, SIMULATION_HEIGHT);
 
 	world_objects.forEach((polygon, i) => {
 		if (i > 3) polygon.draw();
@@ -503,10 +522,78 @@ function draw(){
 	if (playing) softbody.step(world_objects);
 }
 
+function drawSidebar(anchor) {
+	strokeWeight(0);
+	fill(240);
+	rect(anchor.x, anchor.y, SIDEBAR_WIDTH, SIMULATION_HEIGHT);
+
+	drawSidebarPlayControl(anchor, 100);
+}
+
+function drawSidebarPlayControl(anchor, height) {
+	strokeWeight(0);
+	if (playing) fill(0, 255, 0);
+	else fill(255, 0, 0);
+
+	rect(anchor.x, anchor.y, SIDEBAR_WIDTH, height);
+
+	const horizontal_padding = 30;
+	const icon_side_length = height - 2 * horizontal_padding;
+	const icon_anchor = new Vec2(anchor.x + (SIDEBAR_WIDTH - icon_side_length) / 2, anchor.y + horizontal_padding);
+
+	if (playing){
+		fill(0, 100, 0);
+		const x1 = (1 - Math.sqrt(3)/2) * icon_side_length;
+		triangle(
+			icon_anchor.x + x1, icon_anchor.y,
+			icon_anchor.x + x1, icon_anchor.y + icon_side_length,
+			icon_anchor.x + icon_side_length, icon_anchor.y + icon_side_length / 2
+			);
+	} else {
+		fill(100, 0, 0);
+		rect(icon_anchor.x, icon_anchor.y, icon_side_length/3, icon_side_length);
+		rect(icon_anchor.x + icon_side_length * 2/3, icon_anchor.y, icon_side_length/3, icon_side_length);
+	}
+
+	sidebarClickEventTable.push(new ClickEvent(
+		anchor.x, anchor.y, anchor.x+SIDEBAR_WIDTH, anchor.y+height, 10, () => {playing = !playing;}
+	));
+
+	anchor.y += height;
+}
+
+
+function isInBounding(x, y, min_x, min_y, max_x, max_y) {
+	return x > min_x && x < max_x && y > min_y && y < max_y;
+}
+
+function isInSimulationBox(x, y){
+	return isInBounding(x, y, 0, 0, SIMULATION_WIDTH, SIMULATION_HEIGHT)
+}
+
+function isInSidebarBox(x, y){
+	return isInBounding(x, y, SIMULATION_WIDTH, 0, SIMULATION_WIDTH + SIDEBAR_WIDTH, SIMULATION_HEIGHT)
+}
 
 let clicked_points = [];
 function mouseClicked() {
-	clicked_points.push(new Vec2(mouseX, mouseY));
+	if (isInSimulationBox(mouseX, mouseY)) clicked_points.push(new Vec2(mouseX, mouseY));	// TODO: Implements Modes
+	if (isInSidebarBox(mouseX, mouseY)) {
+		let event_callback = () => {};
+		let priority = -Infinity;
+
+		for (let i = 0; i < sidebarClickEventTable.length; i++){
+			let event_entry = sidebarClickEventTable[i];
+			if (event_entry.isOnClick(mouseX, mouseY)) {
+				if (event_entry.priority > priority) {
+					priority = event_entry.priority;
+					event_callback = event_entry.callback;
+				}
+			}
+		}
+
+		event_callback();
+	}
 }
 
 function keyPressed() {
