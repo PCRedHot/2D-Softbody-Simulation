@@ -461,14 +461,26 @@ const SOFTBODY_POINT_WEIGHT = 12;
 const SOFTBODY_SPRING_COLOR = new Color(0, 0, 0, 200);
 const SOFTBODY_SPRING_WEIGHT = 3;
 
+const SIDEBAR_BACKGROUND_COLOR = new Color(255, 255, 255, 255);
+
 
 let world_objects = [];
 let softbody = null;
 
-// Control State
+// Simulation State
 let playing = false;
 
 let sidebarClickEventTable = [];	//	[x_min, y_min, x_max, y_max], priority, callback_function
+
+
+
+// User State
+const MODE_NONE = 0;
+const MODE_CREATE = 1;
+
+let user_mode = MODE_NONE;
+
+let clicked_points = [];
 
 function setup(){
 	createCanvas(SIMULATION_WIDTH + SIDEBAR_WIDTH, SIMULATION_HEIGHT);
@@ -517,6 +529,13 @@ function draw(){
 		if (i > 3) polygon.draw();
 	});
 
+	// Draw points created
+	if (user_mode === MODE_CREATE) {
+		strokeWeight(5);
+		stroke(0);
+		clicked_points.forEach((pt) => point(pt.x, pt.y));
+	}
+
 	softbody.draw();
 
 	if (playing) softbody.step(world_objects);
@@ -524,10 +543,11 @@ function draw(){
 
 function drawSidebar(anchor) {
 	strokeWeight(0);
-	fill(240);
+	fill(SIDEBAR_BACKGROUND_COLOR.r , SIDEBAR_BACKGROUND_COLOR.g, SIDEBAR_BACKGROUND_COLOR.b, SIDEBAR_BACKGROUND_COLOR.a);
 	rect(anchor.x, anchor.y, SIDEBAR_WIDTH, SIMULATION_HEIGHT);
 
 	drawSidebarPlayControl(anchor, 100);
+	drawSidebarCreateModeControl(anchor, 100);
 }
 
 function drawSidebarPlayControl(anchor, height) {
@@ -562,6 +582,39 @@ function drawSidebarPlayControl(anchor, height) {
 	anchor.y += height;
 }
 
+function drawSidebarCreateModeControl(anchor, height) {
+	strokeWeight(0);
+	
+	if (user_mode === MODE_CREATE) fill(150);
+	else fill(200);
+	// else fill(SIDEBAR_BACKGROUND_COLOR.r , SIDEBAR_BACKGROUND_COLOR.g, SIDEBAR_BACKGROUND_COLOR.b, SIDEBAR_BACKGROUND_COLOR.a);
+
+	rect(anchor.x, anchor.y, SIDEBAR_WIDTH, height);
+
+
+	const horizontal_padding = 30;
+	const icon_side_length = height - 2 * horizontal_padding;
+	const icon_anchor = new Vec2(anchor.x + (SIDEBAR_WIDTH - icon_side_length) / 2, anchor.y + horizontal_padding);
+
+	const cross_width = 5;
+	
+	if (user_mode === MODE_CREATE) fill(255);
+	else fill(0);
+
+	rect(icon_anchor.x + (icon_side_length - cross_width)/2, icon_anchor.y, cross_width, icon_side_length);
+	rect(icon_anchor.x, icon_anchor.y  + (icon_side_length - cross_width)/2, icon_side_length, cross_width);
+	
+	sidebarClickEventTable.push(new ClickEvent(
+		anchor.x, anchor.y, anchor.x+SIDEBAR_WIDTH, anchor.y+height, 10, () => {
+			if (user_mode != MODE_CREATE) user_mode = MODE_CREATE;
+			else {
+				user_mode = MODE_NONE;
+				clicked_points = [];
+			}
+		}
+	));
+}
+
 
 function isInBounding(x, y, min_x, min_y, max_x, max_y) {
 	return x > min_x && x < max_x && y > min_y && y < max_y;
@@ -575,9 +628,12 @@ function isInSidebarBox(x, y){
 	return isInBounding(x, y, SIMULATION_WIDTH, 0, SIMULATION_WIDTH + SIDEBAR_WIDTH, SIMULATION_HEIGHT)
 }
 
-let clicked_points = [];
+
+
+
+
 function mouseClicked() {
-	if (isInSimulationBox(mouseX, mouseY)) clicked_points.push(new Vec2(mouseX, mouseY));	// TODO: Implements Modes
+	if (isInSimulationBox(mouseX, mouseY) && user_mode === MODE_CREATE) clicked_points.push(new Vec2(mouseX, mouseY));	// TODO: Implements Modes
 	if (isInSidebarBox(mouseX, mouseY)) {
 		let event_callback = () => {};
 		let priority = -Infinity;
@@ -597,10 +653,15 @@ function mouseClicked() {
 }
 
 function keyPressed() {
-	if (keyCode === 13) {	// Create new world object
+	if (keyCode === 49 || keyCode === 97) user_mode = MODE_NONE;
+	else if (keyCode === 50 || keyCode === 98) {
+		user_mode = MODE_CREATE;
+		clicked_points = [];
+	} 
+	else if (keyCode === 13 && user_mode === MODE_CREATE) {	// Create new world object
 		world_objects.push(new Polygon(clicked_points));
 		clicked_points = [];
+		user_mode = MODE_NONE;
 	}
-
-	if (keyCode === 32) playing = !playing;
+	else if (keyCode === 32) playing = !playing;
 }
