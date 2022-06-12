@@ -2,6 +2,9 @@
  
 A Simple Softbody Simulation using Spring Formula
 
+![image](https://user-images.githubusercontent.com/43814396/173228351-4cc43b8d-2522-43fa-81e1-2b18db9f95e8.png)
+
+
 ## Run it 🚀
 
 #### Python 3
